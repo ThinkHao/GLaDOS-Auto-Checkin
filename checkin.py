@@ -20,7 +20,7 @@ HEADERS_BASE = {
     "content-type": "application/json;charset=UTF-8",
 }
 
-PAYLOAD = {"token": "glados.one"}
+PAYLOAD = {"token": "glados.cloud"}
 TIMEOUT = 10
 
 
