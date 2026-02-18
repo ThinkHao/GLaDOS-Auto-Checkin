@@ -3,6 +3,7 @@ import json
 import time
 import random
 import requests
+from decimal import Decimal, InvalidOperation
 from pypushdeer import PushDeer
 
 
@@ -36,6 +37,40 @@ def safe_json(resp):
         return {}
 
 
+def pick_value(*values):
+    for v in values:
+        if v is not None and v != "":
+            return v
+    return "-"
+
+
+
+
+def to_integer_string(value):
+    if value in (None, "", "-"):
+        return "-"
+
+    try:
+        return str(int(Decimal(str(value))))
+    except (InvalidOperation, ValueError):
+        return str(value).split(".")[0] or "-"
+
+
+def extract_balance_from_checkin(data):
+    if not isinstance(data, dict):
+        return "-"
+
+    records = data.get("list")
+    if not isinstance(records, list) or not records:
+        return "-"
+
+    latest = records[0]
+    if not isinstance(latest, dict):
+        return "-"
+
+    return pick_value(latest.get("balance"))
+
+
 def main():
     sckey = os.getenv("SENDKEY", "")
     cookies_env = os.getenv("COOKIES", "")
@@ -55,6 +90,7 @@ def main():
 
         email = "unknown"
         points = "-"
+        balance = "-"
         days = "-"
 
         try:
@@ -71,10 +107,23 @@ def main():
 
             if "got" in msg_lower:
                 ok += 1
-                points = j.get("points", "-")
+                points = pick_value(j.get("points"))
+                balance = pick_value(
+                    j.get("balance"),
+                    extract_balance_from_checkin(j),
+                    j.get("points"),
+                    balance,
+                )
                 status = "✅ 成功"
             elif "repeat" in msg_lower or "already" in msg_lower:
                 repeat += 1
+                points = pick_value(j.get("points"), "0")
+                balance = pick_value(
+                    j.get("balance"),
+                    extract_balance_from_checkin(j),
+                    j.get("points"),
+                    balance,
+                )
                 status = "🔁 已签到"
             else:
                 fail += 1
@@ -86,12 +135,16 @@ def main():
             email = sj.get("email", email)
             if sj.get("leftDays") is not None:
                 days = f"{int(float(sj['leftDays']))} 天"
+            balance = pick_value(sj.get("balance"), sj.get("points"), balance)
+            balance = to_integer_string(balance)
 
         except Exception:
             fail += 1
             status = "❌ 异常"
 
-        lines.append(f"{idx}. {email} | {status} | P:{points} | 剩余:{days}")
+        lines.append(
+            f"{idx}. {email} | {status} | P:{points} | 累计:{balance} | 剩余:{days}"
+        )
         time.sleep(random.uniform(1, 2))
 
     title = f"GLaDOS 签到完成 ✅{ok} ❌{fail} 🔁{repeat}"
