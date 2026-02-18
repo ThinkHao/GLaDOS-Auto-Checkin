@@ -43,6 +43,23 @@ def pick_value(*values):
     return "-"
 
 
+
+
+def extract_balance_from_checkin(data):
+    if not isinstance(data, dict):
+        return "-"
+
+    records = data.get("list")
+    if not isinstance(records, list) or not records:
+        return "-"
+
+    latest = records[0]
+    if not isinstance(latest, dict):
+        return "-"
+
+    return pick_value(latest.get("balance"))
+
+
 def main():
     sckey = os.getenv("SENDKEY", "")
     cookies_env = os.getenv("COOKIES", "")
@@ -80,12 +97,22 @@ def main():
             if "got" in msg_lower:
                 ok += 1
                 points = pick_value(j.get("points"))
-                balance = pick_value(j.get("balance"), j.get("points"), balance)
+                balance = pick_value(
+                    j.get("balance"),
+                    extract_balance_from_checkin(j),
+                    j.get("points"),
+                    balance,
+                )
                 status = "✅ 成功"
             elif "repeat" in msg_lower or "already" in msg_lower:
                 repeat += 1
                 points = pick_value(j.get("points"), "0")
-                balance = pick_value(j.get("balance"), j.get("points"), balance)
+                balance = pick_value(
+                    j.get("balance"),
+                    extract_balance_from_checkin(j),
+                    j.get("points"),
+                    balance,
+                )
                 status = "🔁 已签到"
             else:
                 fail += 1
