@@ -3,6 +3,7 @@ import json
 import time
 import random
 import requests
+from decimal import Decimal, InvalidOperation
 from pypushdeer import PushDeer
 
 
@@ -43,6 +44,16 @@ def pick_value(*values):
     return "-"
 
 
+
+
+def to_integer_string(value):
+    if value in (None, "", "-"):
+        return "-"
+
+    try:
+        return str(int(Decimal(str(value))))
+    except (InvalidOperation, ValueError):
+        return str(value).split(".")[0] or "-"
 
 
 def extract_balance_from_checkin(data):
@@ -125,6 +136,7 @@ def main():
             if sj.get("leftDays") is not None:
                 days = f"{int(float(sj['leftDays']))} 天"
             balance = pick_value(sj.get("balance"), sj.get("points"), balance)
+            balance = to_integer_string(balance)
 
         except Exception:
             fail += 1
